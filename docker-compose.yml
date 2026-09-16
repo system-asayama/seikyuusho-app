@@ -1,0 +1,24 @@
+services:
+  web:
+    build: .
+    ports:
+      # 同一サーバーで複数アプリを並走させるため WEB_PORT で
+      # ホスト側ポートを切り替え可能にする (デプロイ自動化の
+      # `WEB_PORT=<port> docker compose up` と整合する形)。
+      - "${WEB_PORT:-8080}:8000"
+    environment:
+      DATABASE_URL: postgresql://app:app@db:5432/seikyuusho_app
+    depends_on:
+      - db
+    restart: unless-stopped
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: seikyuusho_app
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+volumes:
+  db_data:
