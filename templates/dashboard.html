@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}ダッシュボード - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>ようこそ、{{ user.name }} さん</h1>
+  <p>
+    ロール: <span class="badge {{ user.role }}">{{ user.role_label }}</span>
+    <span class="muted" style="margin-left:8px;">ログインID: {{ user.username }}</span>
+  </p>
+  {% if user.is_admin %}
+    <p class="muted">管理者は利用者アカウントの追加・パスワード再設定・無効化・削除ができます。</p>
+    <a href="{{ url_for('admin_users') }}"><button>ユーザー管理へ</button></a>
+  {% else %}
+    <p class="muted">請求書の機能はここに追加されていきます。</p>
+  {% endif %}
+</div>
+{% endblock %}

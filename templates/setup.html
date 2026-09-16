@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}初期セットアップ - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>🚀 初期セットアップ</h1>
+  <p class="muted">
+    最初の管理者アカウントを登録します。この画面は管理者がまだ存在しないときだけ表示され、
+    登録が完了すると自動的に無効になります。
+  </p>
+  <form method="post" action="{{ url_for('setup') }}">
+    <label for="username">管理者ログインID</label>
+    <input id="username" name="username" autofocus required autocomplete="username">
+
+    <label for="display_name">表示名（任意）</label>
+    <input id="display_name" name="display_name" placeholder="例: 山田 太郎">
+
+    <label for="password">パスワード（8文字以上）</label>
+    <input id="password" name="password" type="password" minlength="8" autocomplete="new-password" required>
+
+    <label for="confirm">パスワード（確認）</label>
+    <input id="confirm" name="confirm" type="password" minlength="8" autocomplete="new-password" required>
+
+    <button type="submit">管理者を登録して開始</button>
+  </form>
+</div>
+{% endblock %}

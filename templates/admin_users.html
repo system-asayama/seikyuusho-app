@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}ユーザー管理 - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>➕ ユーザーを追加</h1>
+  <p class="muted">利用者は自分で登録できません。ここで管理者がアカウントを発行し、ログインIDと初期パスワードを本人に伝えてください。</p>
+  <form method="post" action="{{ url_for('admin_create_user') }}">
+    <div class="grid">
+      <div>
+        <label for="new-username">ログインID</label>
+        <input id="new-username" name="username" required autocomplete="off">
+      </div>
+      <div>
+        <label for="new-display-name">表示名（任意）</label>
+        <input id="new-display-name" name="display_name" autocomplete="off">
+      </div>
+      <div>
+        <label for="new-password">初期パスワード（8文字以上）</label>
+        <input id="new-password" name="password" type="password" minlength="8" required autocomplete="new-password">
+      </div>
+      <div>
+        <label for="new-role">ロール</label>
+        <select id="new-role" name="role">
+          {% for r in roles %}<option value="{{ r }}" {% if r == 'user' %}selected{% endif %}>{{ role_labels[r] }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="submit">追加する</button>
+  </form>
+</div>
+
+<div class="card">
+  <h1>👥 ユーザー一覧 <span class="muted">({{ users|length }}名)</span></h1>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ログインID</th><th>表示名</th><th>ロール</th><th>状態</th><th>最終ログイン</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr class="{% if not u.is_active %}inactive{% endif %}">
+          <td class="wrap">{{ u.username }}{% if u.id == current_user.id %} <span class="muted">(あなた)</span>{% endif %}</td>
+          <td class="wrap">{{ u.display_name or '—' }}</td>
+          <td><span class="badge {{ u.role }}">{{ u.role_label }}</span></td>
+          <td>{% if u.is_active %}<span class="badge user">有効</span>{% else %}<span class="badge off">無効</span>{% endif %}</td>
+          <td class="muted">{{ u.last_login_at|jst }}</td>
+          <td>
+            <div class="inline">
+              <form method="post" action="{{ url_for('admin_update_role', user_id=u.id) }}">
+                <select name="role" aria-label="ロール">
+                  {% for r in roles %}
+                    <option value="{{ r }}" {% if r == u.role %}selected{% endif %}>{{ role_labels[r] }}</option>
+                  {% endfor %}
+                </select>
+                <button class="small secondary" type="submit">変更</button>
+              </form>
+              <form method="post" action="{{ url_for('admin_reset_password', user_id=u.id) }}">
+                <input name="password" type="password" minlength="8" placeholder="新パスワード" required autocomplete="new-password">
+                <button class="small secondary" type="submit">再設定</button>
+              </form>
+              {% if u.id != current_user.id %}
+              <form method="post" action="{{ url_for('admin_toggle_active', user_id=u.id) }}">
+                <button class="small warn" type="submit">{{ '無効化' if u.is_active else '有効化' }}</button>
+              </form>
+              <form method="post" action="{{ url_for('admin_delete_user', user_id=u.id) }}"
+                    onsubmit="return confirm('「{{ u.name }}」を削除しますか？この操作は取り消せません。');">
+                <button class="small danger" type="submit">削除</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

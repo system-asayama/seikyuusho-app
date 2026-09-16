@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}ログイン - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>🔐 ログイン</h1>
+  <p class="muted">管理者・利用者ともにこの画面からログインします。</p>
+  <form method="post" action="{{ url_for('login', next=request.args.get('next')) }}">
+    <label for="username">ログインID</label>
+    <input id="username" name="username" autofocus required autocomplete="username">
+    <label for="password">パスワード</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+    <button type="submit">ログイン</button>
+  </form>
+  <p class="muted" style="margin-top:16px;">
+    アカウントをお持ちでない方は、管理者に発行を依頼してください。
+  </p>
+</div>
+{% endblock %}

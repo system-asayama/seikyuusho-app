@@ -1,2 +1,6 @@
 __pycache__/
 .env
+*.db
+instance/
+.venv/
+.claude/
