@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}自社情報 - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="toolbar"><h1>🏢 自社情報</h1></div>
+<p class="muted">請求書の発行者として印字される情報です。管理者のみ編集できます。</p>
+
+<form method="post" action="{{ url_for('company.edit') }}">
+  <div class="grid-2">
+    <div class="card">
+      <h2>基本情報</h2>
+      <label for="name">自社名（必須）</label>
+      <input id="name" name="name" value="{{ company.name }}" required>
+      <label for="representative">代表者名</label>
+      <input id="representative" name="representative" value="{{ company.representative }}">
+      <label for="postal_code">郵便番号</label>
+      <input id="postal_code" name="postal_code" value="{{ company.postal_code }}" placeholder="100-0001">
+      <label for="address">住所</label>
+      <input id="address" name="address" value="{{ company.address }}">
+      <label for="tel">電話番号</label>
+      <input id="tel" name="tel" value="{{ company.tel }}">
+      <label for="email">メールアドレス</label>
+      <input id="email" name="email" type="email" value="{{ company.email }}">
+      <label for="registration_number">適格請求書発行事業者 登録番号</label>
+      <input id="registration_number" name="registration_number" value="{{ company.registration_number }}" placeholder="T1234567890123" pattern="T?[0-9]{13}" title="T + 13桁の数字">
+    </div>
+
+    <div class="card">
+      <h2>請求書の既定値</h2>
+      <label for="bank_info">お振込先（複数行可）</label>
+      <textarea id="bank_info" name="bank_info" rows="4" placeholder="○○銀行 ○○支店 普通 1234567&#10;カ）○○○○">{{ company.bank_info }}</textarea>
+      <label for="invoice_prefix">請求書番号のプレフィックス</label>
+      <input id="invoice_prefix" name="invoice_prefix" value="{{ company.invoice_prefix }}" placeholder="INV-">
+      <p class="muted">番号は「プレフィックス + 西暦 + -連番4桁」で自動採番されます（例: {{ company.invoice_prefix }}2026-0001）。</p>
+      <label for="tax_rounding">消費税の端数処理</label>
+      <select id="tax_rounding" name="tax_rounding">
+        {% for key, label in rounding_labels.items() %}
+          <option value="{{ key }}" {% if key == company.tax_rounding %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label for="default_due_days">支払期限（発行日から何日後）</label>
+      <input id="default_due_days" name="default_due_days" type="number" min="0" max="365" value="{{ company.default_due_days }}">
+      <label for="default_notes">備考の既定文</label>
+      <textarea id="default_notes" name="default_notes" rows="3" placeholder="恐れ入りますが振込手数料はご負担ください。">{{ company.default_notes }}</textarea>
+    </div>
+  </div>
+  <button type="submit">保存する</button>
+</form>
+{% endblock %}

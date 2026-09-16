@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice.number }} - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1 style="margin-bottom:4px;">請求書 {{ invoice.number }}
+      <span class="badge {{ invoice.status }}">{{ invoice.status_label }}</span>
+      {% if invoice.is_overdue %}<span class="badge overdue">期限超過</span>{% endif %}
+    </h1>
+    <div class="muted">
+      作成: {{ invoice.created_by.name if invoice.created_by else '—' }} / 最終更新: {{ invoice.updated_at|jst }}
+      {% if invoice.paid_at %} / 入金日: {{ invoice.paid_at|ymd }}{% endif %}
+    </div>
+  </div>
+  <div class="inline">
+    <a class="btn ghost" href="{{ url_for('invoices.print_view', invoice_id=invoice.id) }}" target="_blank">🖨 印刷用表示</a>
+    <a class="btn ghost" href="{{ url_for('invoices.pdf', invoice_id=invoice.id) }}" target="_blank">📄 PDF</a>
+    <a class="btn ghost" href="{{ url_for('invoices.pdf', invoice_id=invoice.id, download=1) }}">⬇ PDF保存</a>
+    {% if not invoice.is_locked %}<a class="btn" href="{{ url_for('invoices.edit', invoice_id=invoice.id) }}">✏️ 編集</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>請求先</h2>
+    <p style="font-size:17px; margin:4px 0;"><a class="link" href="{{ url_for('clients.edit', client_id=invoice.client.id) }}">{{ invoice.client.display_name }}</a></p>
+    <p class="muted" style="margin:4px 0;">{% if invoice.client.postal_code %}〒{{ invoice.client.postal_code }} {% endif %}{{ invoice.client.address }}</p>
+    {% if invoice.client.contact_name %}<p class="muted" style="margin:4px 0;">担当: {{ invoice.client.contact_name }} 様</p>{% endif %}
+  </div>
+  <div class="card">
+    <h2>請求情報</h2>
+    <table>
+      <tr><th style="width:40%">件名</th><td class="wrap">{{ invoice.subject or '—' }}</td></tr>
+      <tr><th>発行日</th><td>{{ invoice.issue_date|jdate }}</td></tr>
+      <tr><th>お支払期限</th><td>{{ invoice.due_date|jdate }}</td></tr>
+      <tr><th>ご請求金額（税込）</th><td style="font-size:20px; font-weight:700;">{{ summary.total|yen }}</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>明細</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th class="wrap">品目</th><th class="num">数量</th><th>単位</th><th class="num">単価</th><th class="num">税率</th><th class="num">金額（税抜）</th></tr></thead>
+      <tbody>
+        {% for item in invoice.items %}
+        <tr>
+          <td class="muted">{{ loop.index }}</td>
+          <td class="wrap">{{ item.description }}{% if item.tax_rate == 8 %} <span class="muted">※</span>{% endif %}</td>
+          <td class="num">{{ item.quantity|num }}</td>
+          <td>{{ item.unit }}</td>
+          <td class="num">¥{{ item.unit_price|num }}</td>
+          <td class="num">{{ item.tax_rate }}%</td>
+          <td class="num">{{ item.amount|yen }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><th colspan="6" style="text-align:right">小計（税抜）</th><td class="num">{{ summary.subtotal|yen }}</td></tr>
+        {% for rs in summary.by_rate %}
+        <tr><th colspan="6" style="text-align:right" class="muted">{{ rs.rate }}%対象 {{ rs.subtotal|yen }} の消費税</th><td class="num">{{ rs.tax|yen }}</td></tr>
+        {% endfor %}
+        <tr><th colspan="6" style="text-align:right">消費税合計</th><td class="num">{{ summary.tax|yen }}</td></tr>
+        <tr><th colspan="6" style="text-align:right; font-size:16px;">合計（税込）</th><td class="num" style="font-size:16px; font-weight:700;">{{ summary.total|yen }}</td></tr>
+      </tfoot>
+    </table>
+  </div>
+  {% if invoice.notes %}<h2 style="margin-top:20px;">備考</h2><p style="white-space:pre-wrap; margin:0;">{{ invoice.notes }}</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>操作</h2>
+  <div class="inline">
+    {% if invoice.status == 'draft' %}
+      <form method="post" action="{{ url_for('invoices.change_status', invoice_id=invoice.id) }}">
+        <input type="hidden" name="action" value="issue">
+        <button type="submit" class="ok" style="margin-top:0">発行済にする</button>
+      </form>
+    {% elif invoice.status == 'issued' %}
+      <form method="post" action="{{ url_for('invoices.change_status', invoice_id=invoice.id) }}">
+        <input type="hidden" name="action" value="paid">
+        <label for="paid_at" style="margin:0">入金日</label>
+        <input id="paid_at" name="paid_at" type="date" value="{{ today_ymd if today_ymd else '' }}">
+        <button type="submit" class="ok" style="margin-top:0">入金済にする</button>
+      </form>
+      <form method="post" action="{{ url_for('invoices.change_status', invoice_id=invoice.id) }}">
+        <input type="hidden" name="action" value="draft">
+        <button type="submit" class="secondary" style="margin-top:0">下書きに戻す</button>
+      </form>
+    {% elif invoice.status == 'paid' %}
+      <form method="post" action="{{ url_for('invoices.change_status', invoice_id=invoice.id) }}">
+        <input type="hidden" name="action" value="reopen">
+        <button type="submit" class="secondary" style="margin-top:0">発行済に戻す</button>
+      </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('invoices.duplicate', invoice_id=invoice.id) }}">
+      <button type="submit" class="secondary" style="margin-top:0">複製して新規作成</button>
+    </form>
+    {% if invoice.status == 'draft' or current_user.is_admin %}
+    <form method="post" action="{{ url_for('invoices.delete', invoice_id=invoice.id) }}"
+          onsubmit="return confirm('請求書 {{ invoice.number }} を削除しますか？この操作は取り消せません。');">
+      <button type="submit" class="danger" style="margin-top:0">削除</button>
+    </form>
+    {% endif %}
+  </div>
+  <p class="muted" style="margin-top:12px;">下書き → 発行済 → 入金済 の順に進みます。入金済の請求書は編集できません（「発行済に戻す」と編集可能になります）。</p>
+</div>
+{% endblock %}

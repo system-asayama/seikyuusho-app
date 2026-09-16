@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}請求書一覧 - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1>🧾 請求書</h1>
+  <a class="btn" href="{{ url_for('invoices.new') }}">＋ 請求書を作成</a>
+</div>
+
+<div class="card">
+  <form method="get" action="{{ url_for('invoices.index') }}" class="filters">
+    <div>
+      <label for="status">状態</label>
+      <select id="status" name="status">
+        <option value="">すべて</option>
+        {% for key, label in status_labels.items() %}
+          <option value="{{ key }}" {% if key == status %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="client_id">取引先</label>
+      <select id="client_id" name="client_id">
+        <option value="">すべて</option>
+        {% for c in clients %}<option value="{{ c.id }}" {% if c.id == client_id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div style="flex:1"><label for="q">検索</label><input id="q" name="q" value="{{ q }}" placeholder="番号・件名・取引先名"></div>
+    <button type="submit" class="secondary">絞り込む</button>
+    {% if status or client_id or q %}<a class="btn small ghost" href="{{ url_for('invoices.index') }}">クリア</a>{% endif %}
+  </form>
+
+  {% if invoices %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>番号</th><th>取引先</th><th>件名</th><th>発行日</th><th>支払期限</th><th class="num">合計（税込）</th><th>状態</th><th></th></tr></thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td><a class="link" href="{{ url_for('invoices.detail', invoice_id=inv.id) }}">{{ inv.number }}</a></td>
+          <td class="wrap">{{ inv.client.name }}</td>
+          <td class="wrap">{{ inv.subject or '—' }}</td>
+          <td>{{ inv.issue_date|ymd }}</td>
+          <td>{{ inv.due_date|ymd or '—' }}</td>
+          <td class="num">{{ inv.total|yen }}</td>
+          <td><span class="badge {{ inv.status }}">{{ inv.status_label }}</span>{% if inv.is_overdue %} <span class="badge overdue">期限超過</span>{% endif %}</td>
+          <td class="inline">
+            <a class="btn small ghost" href="{{ url_for('invoices.print_view', invoice_id=inv.id) }}" target="_blank">印刷</a>
+            <a class="btn small ghost" href="{{ url_for('invoices.pdf', invoice_id=inv.id) }}" target="_blank">PDF</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><th colspan="5" style="text-align:right">表示中 {{ invoices|length }} 件の合計</th><th class="num">{{ total_sum|yen }}</th><th colspan="2"></th></tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">該当する請求書がありません。</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -82,7 +82,7 @@ def test_setup_page_renders(client):
 def test_setup_creates_admin_and_logs_in(app, client):
     res = _setup_admin(client)
     assert res.status_code == 302
-    assert res.headers["Location"].endswith("/admin/users")
+    assert res.headers["Location"].endswith("/company")
 
     with app.app_context():
         admin = User.query.filter_by(username="admin").first()
@@ -136,12 +136,13 @@ def test_login_wrong_password(client):
     assert client.get("/dashboard").status_code == 302
 
 
-def test_admin_login_redirects_to_user_management(client):
+def test_admin_login_redirects_to_dashboard(client):
     _setup_admin(client)
     _logout(client)
     res = _login(client, "admin", ADMIN_PW)
     assert res.status_code == 302
-    assert res.headers["Location"].endswith("/admin/users")
+    assert res.headers["Location"].endswith("/dashboard")
+    assert client.get("/admin/users").status_code == 200
 
 
 def test_user_login_redirects_to_dashboard_and_cannot_access_admin(client):
@@ -182,7 +183,7 @@ def test_login_next_param_is_safe(client):
     _setup_admin(client)
     _logout(client)
     res = client.post("/login?next=//evil.example", data={"username": "admin", "password": ADMIN_PW})
-    assert res.headers["Location"].endswith("/admin/users")
+    assert res.headers["Location"].endswith("/dashboard")
     _logout(client)
     res = client.post("/login?next=/settings", data={"username": "admin", "password": ADMIN_PW})
     assert res.headers["Location"].endswith("/settings")

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}取引先 - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1>👥 取引先</h1>
+  <a class="btn" href="{{ url_for('clients.new') }}">＋ 取引先を登録</a>
+</div>
+
+<div class="card">
+  <form method="get" action="{{ url_for('clients.index') }}" class="filters">
+    <div style="flex:1"><label for="q">検索</label><input id="q" name="q" value="{{ q }}" placeholder="取引先名・担当者名"></div>
+    <button type="submit" class="secondary">検索</button>
+    {% if q %}<a class="btn small ghost" href="{{ url_for('clients.index') }}">クリア</a>{% endif %}
+  </form>
+
+  {% if clients %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>取引先名</th><th>担当者</th><th>連絡先</th><th>住所</th><th class="num">請求書</th><th></th></tr></thead>
+      <tbody>
+        {% for c in clients %}
+        <tr>
+          <td class="wrap"><a class="link" href="{{ url_for('clients.edit', client_id=c.id) }}">{{ c.display_name }}</a></td>
+          <td class="wrap">{{ c.contact_name or '—' }}</td>
+          <td class="wrap muted">{{ c.email }}{% if c.email and c.tel %} / {% endif %}{{ c.tel }}</td>
+          <td class="wrap muted">{% if c.postal_code %}〒{{ c.postal_code }} {% endif %}{{ c.address }}</td>
+          <td class="num">{{ c.invoices|length }}</td>
+          <td><a class="btn small ghost" href="{{ url_for('invoices.new', client_id=c.id) }}">請求書を作成</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">{% if q %}該当する取引先がありません。{% else %}取引先がまだ登録されていません。{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}

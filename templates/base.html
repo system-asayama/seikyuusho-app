@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}請求書アプリ{% endblock %}</title>
   <style>
-    :root { --bg:#f4f6fb; --card:#fff; --primary:#2b6cb0; --danger:#e03131; --warn:#e67700;
+    :root { --bg:#f4f6fb; --card:#fff; --primary:#2b6cb0; --danger:#e03131; --warn:#e67700; --ok:#2f9e44;
             --text:#222; --muted:#777; --border:#d0d4dd; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -13,24 +13,30 @@
     header { background:var(--primary); color:#fff; padding:12px 20px;
              display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
     header a, header button.linklike { color:#fff; text-decoration:none; margin-left:16px; font-size:15px; }
+    header a.active { text-decoration:underline; text-underline-offset:4px; }
     header .brand { font-weight:700; font-size:18px; }
+    header .brand a { margin:0; }
     header nav { display:flex; align-items:center; flex-wrap:wrap; }
     header form { display:inline; margin:0; }
     button.linklike { background:none; border:none; padding:0; cursor:pointer; margin-top:0; }
-    .container { max-width:960px; margin:32px auto; padding:0 16px; }
+    .container { max-width:1080px; margin:28px auto; padding:0 16px; }
     .card { background:var(--card); border-radius:12px; padding:24px;
             box-shadow:0 2px 10px rgba(0,0,0,.06); margin-bottom:20px; }
     .card.narrow { max-width:400px; margin-left:auto; margin-right:auto; }
     h1 { margin-top:0; font-size:22px; }
+    h2 { font-size:17px; margin:0 0 10px; }
     label { display:block; margin:12px 0 4px; font-size:14px; color:var(--muted); }
-    input, select { width:100%; padding:10px; border:1px solid var(--border);
-                    border-radius:8px; font-size:15px; background:#fff; }
-    button { cursor:pointer; border:none; border-radius:8px; padding:10px 16px;
-             font-size:15px; background:var(--primary); color:#fff; margin-top:16px; }
-    button.danger { background:var(--danger); }
-    button.warn { background:var(--warn); }
-    button.secondary { background:#868e96; }
-    button.small { padding:6px 10px; font-size:13px; margin-top:0; }
+    input, select, textarea { width:100%; padding:10px; border:1px solid var(--border);
+                    border-radius:8px; font-size:15px; background:#fff; font-family:inherit; }
+    textarea { min-height:80px; resize:vertical; }
+    button, a.btn { cursor:pointer; border:none; border-radius:8px; padding:10px 16px; display:inline-block;
+             font-size:15px; background:var(--primary); color:#fff; margin-top:16px; text-decoration:none; line-height:1.2; }
+    button.danger, a.btn.danger { background:var(--danger); }
+    button.warn, a.btn.warn { background:var(--warn); }
+    button.ok, a.btn.ok { background:var(--ok); }
+    button.secondary, a.btn.secondary { background:#868e96; }
+    button.small, a.btn.small { padding:6px 10px; font-size:13px; margin-top:0; }
+    button.ghost, a.btn.ghost { background:#fff; color:var(--primary); border:1px solid var(--primary); }
     .muted { color:var(--muted); font-size:14px; }
     .flash { padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:14px; }
     .flash.success { background:#e6fcf5; color:#0c8599; }
@@ -40,26 +46,52 @@
     th, td { text-align:left; padding:10px; border-bottom:1px solid #eee; font-size:14px;
              white-space:nowrap; vertical-align:middle; }
     th.wrap, td.wrap { white-space:normal; }
+    td.num, th.num { text-align:right; font-variant-numeric: tabular-nums; }
     tr.inactive td { opacity:.55; }
     .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; }
     .badge.admin { background:#fff3bf; color:#a06b00; }
     .badge.user { background:#e7f5ff; color:#1971c2; }
     .badge.off { background:#f1f3f5; color:#868e96; }
+    .badge.draft { background:#f1f3f5; color:#495057; }
+    .badge.issued { background:#e7f5ff; color:#1971c2; }
+    .badge.paid { background:#e6fcf5; color:#0b7285; }
+    .badge.overdue { background:#fff0f0; color:#c92a2a; }
     .inline { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
     .inline form { display:flex; gap:6px; align-items:center; margin:0; }
     .inline input, .inline select { width:auto; padding:6px 8px; font-size:13px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0 16px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0 16px; }
+    .grid-2 { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px; }
+    .toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+    .toolbar h1 { margin:0; }
+    .toolbar .btn, .toolbar button { margin-top:0; }
+    .stats { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:20px; }
+    .stat { background:var(--card); border-radius:12px; padding:16px 18px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+    .stat .label { font-size:13px; color:var(--muted); }
+    .stat .value { font-size:24px; font-weight:700; margin-top:4px; font-variant-numeric: tabular-nums; }
+    .stat .value.warn { color:var(--danger); }
     a.link { color:var(--primary); }
+    .notice { background:#fff9db; color:#7a5a00; border-radius:8px; padding:10px 14px; font-size:14px; margin-bottom:16px; }
+    .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:end; margin-bottom:12px; }
+    .filters label { margin:0 0 4px; }
+    .filters > div { min-width:140px; }
+    .filters button { margin-top:0; }
+    @media (max-width: 640px) { .container { margin-top:16px; } .card { padding:16px; } }
   </style>
+  {% block head %}{% endblock %}
 </head>
 <body>
   <header>
-    <span class="brand">🧾 請求書アプリ</span>
+    <span class="brand"><a href="{{ url_for('index') }}">🧾 請求書アプリ</a></span>
     <nav>
       {% if current_user %}
-        <a href="{{ url_for('dashboard') }}">ダッシュボード</a>
-        {% if current_user.is_admin %}<a href="{{ url_for('admin_users') }}">ユーザー管理</a>{% endif %}
-        <a href="{{ url_for('settings') }}">アカウント設定</a>
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">ダッシュボード</a>
+        <a href="{{ url_for('invoices.index') }}" class="{{ 'active' if request.blueprint == 'invoices' }}">請求書</a>
+        <a href="{{ url_for('clients.index') }}" class="{{ 'active' if request.blueprint == 'clients' }}">取引先</a>
+        {% if current_user.is_admin %}
+          <a href="{{ url_for('company.edit') }}" class="{{ 'active' if request.blueprint == 'company' }}">自社情報</a>
+          <a href="{{ url_for('admin_users') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('admin_') }}">ユーザー管理</a>
+        {% endif %}
+        <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' }}">アカウント</a>
         <form method="post" action="{{ url_for('logout') }}">
           <button type="submit" class="linklike">ログアウト（{{ current_user.name }}）</button>
         </form>
@@ -74,5 +106,6 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </div>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

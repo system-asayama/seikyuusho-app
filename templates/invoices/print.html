@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>請求書 {{ invoice.number }}</title>
+  <style>
+    @page { size: A4; margin: 16mm; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:#e9ecef; color:#111; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif; font-size:11pt; }
+    .toolbar { position:sticky; top:0; background:#2b6cb0; color:#fff; padding:10px 16px; display:flex; gap:12px; align-items:center; }
+    .toolbar button, .toolbar a { background:#fff; color:#2b6cb0; border:none; border-radius:6px; padding:6px 12px; font-size:14px; cursor:pointer; text-decoration:none; }
+    .sheet { background:#fff; width:210mm; min-height:297mm; margin:20px auto; padding:16mm; box-shadow:0 2px 12px rgba(0,0,0,.15); }
+    h1 { text-align:center; font-size:24pt; letter-spacing:.5em; margin:0 0 14mm; font-weight:600; }
+    .head { display:flex; justify-content:space-between; gap:12mm; }
+    .to { flex:1; }
+    .to .name { font-size:14pt; border-bottom:1px solid #333; padding-bottom:2mm; margin-bottom:2mm; }
+    .from { width:75mm; font-size:9.5pt; line-height:1.6; }
+    .meta { text-align:right; margin-bottom:5mm; }
+    .meta div { line-height:1.7; }
+    .subject { margin:8mm 0 3mm; }
+    .amount { display:flex; align-items:baseline; gap:8mm; border-bottom:2px solid #111; padding:2mm 0; margin:3mm 0 8mm; width:120mm; }
+    .amount .label { font-size:11pt; }
+    .amount .value { font-size:18pt; font-weight:700; margin-left:auto; }
+    table { width:100%; border-collapse:collapse; font-size:10pt; }
+    th, td { padding:2.2mm 2mm; border-bottom:1px solid #bbb; vertical-align:middle; }
+    thead th { background:#e9eef5; border-bottom:1px solid #111; text-align:left; font-weight:600; }
+    .num { text-align:right; font-variant-numeric: tabular-nums; white-space:nowrap; }
+    .summary { width:100mm; margin-left:auto; margin-top:4mm; }
+    .summary td { border-bottom:none; padding:1.4mm 2mm; }
+    .summary tr.total td { border-top:1px solid #111; font-weight:700; font-size:11.5pt; }
+    .summary .small { font-size:9pt; color:#444; }
+    .note { margin-top:10mm; font-size:9.5pt; }
+    .note h3 { font-size:10pt; margin:0 0 1.5mm; }
+    .note p { margin:0; white-space:pre-wrap; line-height:1.6; }
+    .reduced { font-size:9pt; color:#444; margin-top:2mm; }
+    @media print {
+      body { background:#fff; }
+      .toolbar { display:none; }
+      .sheet { width:auto; min-height:0; margin:0; padding:0; box-shadow:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">🖨 印刷 / PDFとして保存</button>
+    <a href="{{ url_for('invoices.pdf', invoice_id=invoice.id, download=1) }}">⬇ PDF ダウンロード</a>
+    <a href="{{ url_for('invoices.detail', invoice_id=invoice.id) }}">← 戻る</a>
+  </div>
+
+  <div class="sheet">
+    <h1>請求書</h1>
+
+    <div class="head">
+      <div class="to">
+        <div class="name">{{ invoice.client.name }} {{ invoice.client.honorific }}</div>
+        {% if invoice.client.postal_code or invoice.client.address %}
+        <div>{% if invoice.client.postal_code %}〒{{ invoice.client.postal_code }} {% endif %}{{ invoice.client.address }}</div>
+        {% endif %}
+        {% if invoice.client.contact_name %}<div>{{ invoice.client.contact_name }} 様</div>{% endif %}
+      </div>
+      <div class="from">
+        <div class="meta">
+          <div>請求書番号: {{ invoice.number }}</div>
+          <div>発行日: {{ invoice.issue_date|jdate }}</div>
+          {% if invoice.due_date %}<div>お支払期限: {{ invoice.due_date|jdate }}</div>{% endif %}
+        </div>
+        <div style="font-size:11.5pt; font-weight:600;">{{ company.name }}</div>
+        {% if company.postal_code or company.address %}<div>〒{{ company.postal_code }} {{ company.address }}</div>{% endif %}
+        {% if company.tel or company.email %}<div>{% if company.tel %}TEL {{ company.tel }}{% endif %}{% if company.tel and company.email %} / {% endif %}{{ company.email }}</div>{% endif %}
+        {% if company.representative %}<div>{{ company.representative }}</div>{% endif %}
+        {% if company.registration_number %}<div>登録番号: {{ company.registration_number }}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if invoice.subject %}<div class="subject">件名: {{ invoice.subject }}</div>{% endif %}
+    <div>下記の通りご請求申し上げます。</div>
+    <div class="amount"><span class="label">ご請求金額（税込）</span><span class="value">{{ summary.total|yen }}</span></div>
+
+    <table>
+      <thead>
+        <tr><th style="width:46%">品目</th><th class="num">数量</th><th>単位</th><th class="num">単価</th><th class="num">税率</th><th class="num">金額</th></tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.items %}
+        <tr>
+          <td>{{ item.description }}{% if item.tax_rate == 8 %} ※{% endif %}</td>
+          <td class="num">{{ item.quantity|num }}</td>
+          <td>{{ item.unit }}</td>
+          <td class="num">¥{{ item.unit_price|num }}</td>
+          <td class="num">{{ item.tax_rate }}%</td>
+          <td class="num">{{ item.amount|yen }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <table class="summary">
+      <tr><td>小計（税抜）</td><td class="num">{{ summary.subtotal|yen }}</td></tr>
+      {% for rs in summary.by_rate %}
+      <tr class="small"><td>{{ rs.rate }}%対象 {{ rs.subtotal|yen }}　消費税</td><td class="num">{{ rs.tax|yen }}</td></tr>
+      {% endfor %}
+      <tr><td>消費税合計</td><td class="num">{{ summary.tax|yen }}</td></tr>
+      <tr class="total"><td>合計（税込）</td><td class="num">{{ summary.total|yen }}</td></tr>
+    </table>
+    {% if invoice.items|selectattr('tax_rate', 'equalto', 8)|list %}
+    <div class="reduced">※ は軽減税率（8%）対象品目です。</div>
+    {% endif %}
+
+    {% if company.bank_info %}
+    <div class="note"><h3>お振込先</h3><p>{{ company.bank_info }}</p></div>
+    {% endif %}
+    {% if invoice.notes %}
+    <div class="note"><h3>備考</h3><p>{{ invoice.notes }}</p></div>
+    {% endif %}
+  </div>
+</body>
+</html>

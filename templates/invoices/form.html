@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}{{ '請求書を作成' if is_new else '請求書を編集' }} - 請求書アプリ{% endblock %}
+{% block head %}
+<style>
+  #items-table input, #items-table select { padding:7px 8px; font-size:14px; }
+  #items-table td { padding:6px 4px; }
+  #items-table th { font-size:13px; }
+  #items-table .amount { min-width:110px; }
+  .drag { cursor:grab; color:#aaa; }
+  .totals { margin-left:auto; width:min(100%, 360px); }
+  .totals td { padding:6px 8px; border-bottom:none; }
+  .totals tr.total td { border-top:1px solid #333; font-weight:700; font-size:16px; }
+  .totals .small td { font-size:13px; color:var(--muted); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1>{{ '🧾 請求書を作成' if is_new else '✏️ 請求書を編集 ' ~ invoice.number }}</h1>
+  <a class="link" href="{{ url_for('invoices.detail', invoice_id=invoice.id) if not is_new else url_for('invoices.index') }}">← 戻る</a>
+</div>
+
+{% if not clients %}
+<div class="notice">取引先がまだ登録されていません。先に <a class="link" href="{{ url_for('clients.new', next=request.path) }}">取引先を登録</a> してください。</div>
+{% endif %}
+{% if not is_new and invoice.status == 'issued' %}
+<div class="notice">この請求書は発行済です。相手に送付済みの場合、内容の変更にはご注意ください。</div>
+{% endif %}
+
+<form method="post" id="invoice-form" action="{{ url_for('invoices.new') if is_new else url_for('invoices.edit', invoice_id=invoice.id) }}">
+  <div class="card">
+    <div class="grid">
+      <div style="grid-column: span 2;">
+        <label for="client_id">取引先（必須）</label>
+        <div class="inline" style="flex-wrap:nowrap;">
+          <select id="client_id" name="client_id" required style="flex:1; width:auto; padding:10px; font-size:15px;">
+            <option value="">選択してください</option>
+            {% for c in clients %}<option value="{{ c.id }}" {% if c.id == invoice.client_id %}selected{% endif %}>{{ c.display_name }}</option>{% endfor %}
+          </select>
+          <a class="btn small ghost" href="{{ url_for('clients.new', next=request.path) }}">＋ 新規</a>
+        </div>
+      </div>
+      <div><label for="number">請求書番号</label><input id="number" name="number" value="{{ invoice.number }}" required></div>
+      <div><label for="issue_date">発行日</label><input id="issue_date" name="issue_date" type="date" value="{{ invoice.issue_date|ymd }}" required></div>
+      <div><label for="due_date">お支払期限</label><input id="due_date" name="due_date" type="date" value="{{ invoice.due_date|ymd }}"></div>
+      <div style="grid-column: 1 / -1;"><label for="subject">件名</label><input id="subject" name="subject" value="{{ invoice.subject or '' }}" placeholder="例: 2026年8月分 業務委託料"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>明細</h2>
+    <div class="table-wrap">
+      <table id="items-table" data-rounding="{{ company.tax_rounding }}">
+        <thead>
+          <tr><th style="width:40%">品目</th><th class="num">数量</th><th>単位</th><th class="num">単価（税抜）</th><th>税率</th><th class="num amount">金額</th><th></th></tr>
+        </thead>
+        <tbody id="items-body">
+          {% for item in invoice.items %}
+          <tr class="item-row">
+            <td><input name="item_description" value="{{ item.description or '' }}" placeholder="品目・作業内容" list="desc-suggestions"></td>
+            <td><input name="item_quantity" class="qty num" value="{{ item.quantity|plain }}" inputmode="decimal" style="width:80px"></td>
+            <td><input name="item_unit" value="{{ item.unit or '' }}" placeholder="式" style="width:64px"></td>
+            <td><input name="item_unit_price" class="price num" value="{{ item.unit_price|plain }}" inputmode="decimal" style="width:120px"></td>
+            <td>
+              <select name="item_tax_rate" class="rate">
+                {% for r in tax_rates %}<option value="{{ r }}" {% if r == item.tax_rate %}selected{% endif %}>{{ r }}%</option>{% endfor %}
+              </select>
+            </td>
+            <td class="num amount-cell">¥0</td>
+            <td><button type="button" class="small secondary remove-row" title="行を削除">✕</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <button type="button" id="add-row" class="ghost small" style="margin-top:12px;">＋ 行を追加</button>
+
+    <table class="totals" style="margin-top:16px;">
+      <tr><td>小計（税抜）</td><td class="num" id="t-subtotal">¥0</td></tr>
+      <tbody id="t-by-rate"></tbody>
+      <tr><td>消費税合計</td><td class="num" id="t-tax">¥0</td></tr>
+      <tr class="total"><td>合計（税込）</td><td class="num" id="t-total">¥0</td></tr>
+    </table>
+    <p class="muted">金額は数量×単価（円未満切り捨て）。消費税は税率ごとに合算してから「{{ {'floor':'切り捨て','round':'四捨五入','ceil':'切り上げ'}[company.tax_rounding] }}」で端数処理します。</p>
+  </div>
+
+  <div class="card">
+    <label for="notes">備考（請求書に印字されます）</label>
+    <textarea id="notes" name="notes" rows="3">{{ invoice.notes or '' }}</textarea>
+    <div class="inline">
+      <button type="submit">{{ '作成する' if is_new else '保存する' }}</button>
+      <a class="btn secondary" style="margin-top:16px;" href="{{ url_for('invoices.detail', invoice_id=invoice.id) if not is_new else url_for('invoices.index') }}">キャンセル</a>
+    </div>
+  </div>
+</form>
+
+<template id="row-template">
+  <tr class="item-row">
+    <td><input name="item_description" placeholder="品目・作業内容"></td>
+    <td><input name="item_quantity" class="qty num" value="1" inputmode="decimal" style="width:80px"></td>
+    <td><input name="item_unit" placeholder="式" style="width:64px"></td>
+    <td><input name="item_unit_price" class="price num" value="" inputmode="decimal" style="width:120px"></td>
+    <td>
+      <select name="item_tax_rate" class="rate">
+        {% for r in tax_rates %}<option value="{{ r }}" {% if r == 10 %}selected{% endif %}>{{ r }}%</option>{% endfor %}
+      </select>
+    </td>
+    <td class="num amount-cell">¥0</td>
+    <td><button type="button" class="small secondary remove-row" title="行を削除">✕</button></td>
+  </tr>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const body = document.getElementById('items-body');
+  const table = document.getElementById('items-table');
+  const rounding = table.dataset.rounding || 'floor';
+  const yen = (n) => '¥' + Math.trunc(n).toLocaleString('ja-JP');
+
+  function toNumber(raw) {
+    if (raw == null) return 0;
+    const s = String(raw).replace(/[,¥￥\s]/g, '')
+      .replace(/[０-９．－]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function roundYen(v) {
+    if (rounding === 'ceil') return Math.ceil(v - 1e-9);
+    if (rounding === 'round') return Math.floor(v + 0.5);
+    return Math.floor(v + 1e-9);
+  }
+  function lineAmount(qty, price) {
+    // 浮動小数の誤差を抑えるため 100 倍して計算
+    return Math.floor(Math.round(qty * 100) * Math.round(price * 100) / 10000 + 1e-9);
+  }
+
+  function recalc() {
+    const buckets = {};
+    let subtotal = 0;
+    body.querySelectorAll('tr.item-row').forEach((row) => {
+      const qty = toNumber(row.querySelector('.qty').value);
+      const price = toNumber(row.querySelector('.price').value);
+      const rate = parseInt(row.querySelector('.rate').value, 10) || 0;
+      const amount = lineAmount(qty, price);
+      row.querySelector('.amount-cell').textContent = yen(amount);
+      buckets[rate] = (buckets[rate] || 0) + amount;
+      subtotal += amount;
+    });
+    let tax = 0;
+    const byRate = document.getElementById('t-by-rate');
+    byRate.innerHTML = '';
+    Object.keys(buckets).map(Number).sort((a, b) => b - a).forEach((rate) => {
+      const t = roundYen(buckets[rate] * rate / 100);
+      tax += t;
+      const tr = document.createElement('tr');
+      tr.className = 'small';
+      tr.innerHTML = '<td>' + rate + '%対象 ' + yen(buckets[rate]) + ' の消費税</td><td class="num">' + yen(t) + '</td>';
+      byRate.appendChild(tr);
+    });
+    document.getElementById('t-subtotal').textContent = yen(subtotal);
+    document.getElementById('t-tax').textContent = yen(tax);
+    document.getElementById('t-total').textContent = yen(subtotal + tax);
+    body.querySelectorAll('.remove-row').forEach((b) => { b.disabled = body.querySelectorAll('tr.item-row').length <= 1; });
+  }
+
+  function addRow(focus) {
+    const tpl = document.getElementById('row-template');
+    const row = tpl.content.firstElementChild.cloneNode(true);
+    body.appendChild(row);
+    if (focus) row.querySelector('input[name="item_description"]').focus();
+    recalc();
+    return row;
+  }
+
+  document.getElementById('add-row').addEventListener('click', () => addRow(true));
+  body.addEventListener('click', (e) => {
+    const btn = e.target.closest('.remove-row');
+    if (!btn) return;
+    const rows = body.querySelectorAll('tr.item-row');
+    if (rows.length <= 1) return;
+    btn.closest('tr').remove();
+    recalc();
+  });
+  body.addEventListener('input', recalc);
+  body.addEventListener('change', recalc);
+  // 最終行の単価で Enter を押したら次の行を追加
+  body.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !e.target.classList.contains('price')) return;
+    e.preventDefault();
+    const rows = body.querySelectorAll('tr.item-row');
+    if (e.target.closest('tr') === rows[rows.length - 1]) addRow(true);
+  });
+
+  if (!body.querySelector('tr.item-row')) addRow(false);
+  recalc();
+})();
+</script>
+{% endblock %}

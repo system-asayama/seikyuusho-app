@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ '取引先を登録' if is_new else '取引先を編集' }} - 請求書アプリ{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <h1>{{ '➕ 取引先を登録' if is_new else '✏️ 取引先を編集' }}</h1>
+  <a class="link" href="{{ url_for('clients.index') }}">← 取引先一覧へ</a>
+</div>
+
+<div class="grid-2">
+  <form method="post" class="card" action="{{ url_for('clients.new', next=request.args.get('next')) if is_new else url_for('clients.edit', client_id=client.id) }}">
+    <div class="grid">
+      <div style="grid-column: 1 / -1;">
+        <label for="name">取引先名（必須）</label>
+        <div class="inline" style="flex-wrap:nowrap;">
+          <input id="name" name="name" value="{{ client.name or '' }}" required style="flex:1; width:auto; padding:10px; font-size:15px;">
+          <select name="honorific" aria-label="敬称" style="width:auto; padding:10px; font-size:15px;">
+            {% for h in honorifics %}<option value="{{ h }}" {% if h == (client.honorific or '御中') %}selected{% endif %}>{{ h or '（なし）' }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div><label for="contact_name">担当者名</label><input id="contact_name" name="contact_name" value="{{ client.contact_name or '' }}"></div>
+      <div><label for="postal_code">郵便番号</label><input id="postal_code" name="postal_code" value="{{ client.postal_code or '' }}"></div>
+      <div style="grid-column: 1 / -1;"><label for="address">住所</label><input id="address" name="address" value="{{ client.address or '' }}"></div>
+      <div><label for="email">メールアドレス</label><input id="email" name="email" type="email" value="{{ client.email or '' }}"></div>
+      <div><label for="tel">電話番号</label><input id="tel" name="tel" value="{{ client.tel or '' }}"></div>
+      <div style="grid-column: 1 / -1;"><label for="notes">メモ</label><textarea id="notes" name="notes" rows="3">{{ client.notes or '' }}</textarea></div>
+    </div>
+    <div class="inline">
+      <button type="submit">{{ '登録する' if is_new else '保存する' }}</button>
+      {% if not is_new %}
+        <a class="btn ghost" style="margin-top:16px;" href="{{ url_for('invoices.new', client_id=client.id) }}">この取引先に請求書を作成</a>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if not is_new %}
+  <div>
+    <div class="card">
+      <h2>この取引先の請求書（{{ invoices|length }}件）</h2>
+      {% if invoices %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>番号</th><th>発行日</th><th class="num">合計</th><th>状態</th></tr></thead>
+          <tbody>
+            {% for inv in invoices %}
+            <tr>
+              <td><a class="link" href="{{ url_for('invoices.detail', invoice_id=inv.id) }}">{{ inv.number }}</a></td>
+              <td>{{ inv.issue_date|ymd }}</td>
+              <td class="num">{{ inv.total|yen }}</td>
+              <td><span class="badge {{ inv.status }}">{{ inv.status_label }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="muted">まだ請求書がありません。</p>
+      {% endif %}
+    </div>
+    {% if not invoices %}
+    <form method="post" action="{{ url_for('clients.delete', client_id=client.id) }}" class="card"
+          onsubmit="return confirm('取引先「{{ client.name }}」を削除しますか？');">
+      <h2>取引先の削除</h2>
+      <p class="muted">請求書が1件も無い取引先だけ削除できます。</p>
+      <button type="submit" class="danger" style="margin-top:8px;">削除する</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,17 +1,56 @@
 {% extends "base.html" %}
 {% block title %}ダッシュボード - 請求書アプリ{% endblock %}
 {% block content %}
+<div class="toolbar">
+  <h1>ダッシュボード</h1>
+  <div class="inline">
+    <a class="btn" href="{{ url_for('invoices.new') }}">＋ 請求書を作成</a>
+    <a class="btn ghost" href="{{ url_for('clients.new') }}">＋ 取引先を登録</a>
+  </div>
+</div>
+
+{% if not company.is_configured %}
+<div class="notice">
+  請求書に印字する自社情報がまだ登録されていません。
+  {% if current_user.is_admin %}<a class="link" href="{{ url_for('company.edit') }}">自社情報を登録する</a>
+  {% else %}管理者に自社情報の登録を依頼してください。{% endif %}
+</div>
+{% endif %}
+
+<div class="stats">
+  <div class="stat"><div class="label">今月の請求額（発行済・入金済）</div><div class="value">{{ stats.month_total|yen }}</div></div>
+  <div class="stat"><div class="label">未入金の合計</div><div class="value">{{ stats.unpaid_total|yen }}</div></div>
+  <div class="stat"><div class="label">支払期限超過</div><div class="value {{ 'warn' if stats.overdue_count }}">{{ stats.overdue_count }} 件</div></div>
+  <div class="stat"><div class="label">下書き / 発行済 / 入金済</div>
+    <div class="value">{{ stats.counts['draft'] }} / {{ stats.counts['issued'] }} / {{ stats.counts['paid'] }}</div></div>
+</div>
+
 <div class="card">
-  <h1>ようこそ、{{ user.name }} さん</h1>
-  <p>
-    ロール: <span class="badge {{ user.role }}">{{ user.role_label }}</span>
-    <span class="muted" style="margin-left:8px;">ログインID: {{ user.username }}</span>
-  </p>
-  {% if user.is_admin %}
-    <p class="muted">管理者は利用者アカウントの追加・パスワード再設定・無効化・削除ができます。</p>
-    <a href="{{ url_for('admin_users') }}"><button>ユーザー管理へ</button></a>
+  <div class="toolbar">
+    <h2 style="margin:0">最近更新した請求書</h2>
+    <a class="link" href="{{ url_for('invoices.index') }}">すべて見る →</a>
+  </div>
+  {% if stats.recent %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>番号</th><th>取引先</th><th>件名</th><th>発行日</th><th>支払期限</th><th class="num">合計</th><th>状態</th></tr></thead>
+      <tbody>
+        {% for inv in stats.recent %}
+        <tr>
+          <td><a class="link" href="{{ url_for('invoices.detail', invoice_id=inv.id) }}">{{ inv.number }}</a></td>
+          <td class="wrap">{{ inv.client.name }}</td>
+          <td class="wrap">{{ inv.subject or '—' }}</td>
+          <td>{{ inv.issue_date|ymd }}</td>
+          <td>{{ inv.due_date|ymd or '—' }}</td>
+          <td class="num">{{ inv.total|yen }}</td>
+          <td><span class="badge {{ inv.status }}">{{ inv.status_label }}</span>{% if inv.is_overdue %} <span class="badge overdue">期限超過</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
-    <p class="muted">請求書の機能はここに追加されていきます。</p>
+  <p class="muted">まだ請求書がありません。「請求書を作成」から最初の請求書を作りましょう。</p>
   {% endif %}
 </div>
 {% endblock %}
