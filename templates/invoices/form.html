@@ -11,6 +11,12 @@
   .totals td { padding:6px 8px; border-bottom:none; }
   .totals tr.total td { border-top:1px solid #333; font-weight:700; font-size:16px; }
   .totals .small td { font-size:13px; color:var(--muted); }
+  .grid .span-2 { grid-column: span 2; }
+  .client-row { display:flex; gap:6px; align-items:center; }
+  .client-row select { flex:1; min-width:0; width:auto; }
+  .client-row .btn { flex:none; white-space:nowrap; }
+  /* 狭い画面ではグリッドが1列になるため、2列分の指定を全幅に切り替える */
+  @media (max-width: 560px) { .grid .span-2 { grid-column: 1 / -1; } }
 </style>
 {% endblock %}
 {% block content %}
@@ -29,10 +35,10 @@
 <form method="post" id="invoice-form" action="{{ url_for('invoices.new') if is_new else url_for('invoices.edit', invoice_id=invoice.id) }}">
   <div class="card">
     <div class="grid">
-      <div style="grid-column: span 2;">
+      <div class="span-2">
         <label for="client_id">取引先（必須）</label>
-        <div class="inline" style="flex-wrap:nowrap;">
-          <select id="client_id" name="client_id" required style="flex:1; width:auto; padding:10px; font-size:15px;">
+        <div class="client-row">
+          <select id="client_id" name="client_id" required>
             <option value="">選択してください</option>
             {% for c in clients %}<option value="{{ c.id }}" {% if c.id == invoice.client_id %}selected{% endif %}>{{ c.display_name }}</option>{% endfor %}
           </select>
